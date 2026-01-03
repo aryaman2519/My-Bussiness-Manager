@@ -16,7 +16,7 @@ export const Navbar = () => {
       <div className="max-w-6xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
-            <img src="/src/assets/logo.png" alt="Logo" className="w-10 h-10 rounded-lg shadow-lg shadow-blue-500/20" />
+            <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded-lg shadow-lg shadow-blue-500/20" />
             <div>
               <div className="text-base font-bold text-white">MY STORE MANAGER</div>
             </div>

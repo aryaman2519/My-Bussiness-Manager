@@ -47,6 +47,10 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+@router.options("/register")
+async def options_register():
+    return {}
+
 @router.post("/register", response_model=UserResponse)
 async def register_owner(
     owner_data: OwnerRegister,

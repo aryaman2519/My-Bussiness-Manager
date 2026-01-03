@@ -30,6 +30,15 @@ def create_app() -> FastAPI:
         version="0.1.0",
     )
 
+    # CORS middleware - MUST BE FIRST
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:5173", "https://my-bussiness-manager.vercel.app"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     @app.middleware("http")
     async def log_exceptions_middleware(request: Request, call_next):
         try:
@@ -46,15 +55,6 @@ def create_app() -> FastAPI:
                 status_code=500,
                 content={"detail": "Internal Server Error", "traceback": error_details}
             )
-
-    # CORS middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://localhost:3000"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
 
     # Mount static files
     from fastapi.staticfiles import StaticFiles
@@ -111,7 +111,7 @@ def create_app() -> FastAPI:
         """
 
         return {"status": "ok"}
-
+    
     return app
 
 

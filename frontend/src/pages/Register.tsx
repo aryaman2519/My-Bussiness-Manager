@@ -41,7 +41,7 @@ export const Register = () => {
         business_name: formData.business_name,
         business_type: formData.business_type,
         username: formData.username,
-        email: formData.email || null,
+        email: formData.email,
         password: formData.password,
       });
 
@@ -62,7 +62,7 @@ export const Register = () => {
         {/* Logo and Title */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4">
-            <img src="/src/assets/logo.png" alt="Logo" className="w-16 h-16 rounded-xl shadow-lg shadow-blue-500/20" />
+            <img src="/logo.png" alt="Logo" className="w-16 h-16 rounded-xl shadow-lg shadow-blue-500/20" />
             <div className="text-left">
               <div className="text-2xl font-bold text-white">MY STORE MANAGER</div>
               <div className="text-xs text-slate-400">Owner Registration</div>

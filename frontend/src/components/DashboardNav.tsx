@@ -10,7 +10,7 @@ export const DashboardNav = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             <Link to="/dashboard" className="flex items-center gap-2 sm:gap-3">
-              <img src="/src/assets/logo.png" alt="Logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg shadow-lg shadow-blue-500/20" />
+              <img src="/logo.png" alt="Logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg shadow-lg shadow-blue-500/20" />
               <div>
                 <div className="text-sm sm:text-base font-bold text-white">MY STORE MANAGER</div>
                 <div className="text-[10px] sm:text-xs text-slate-400">Dashboard</div>
