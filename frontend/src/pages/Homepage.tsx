@@ -47,6 +47,45 @@ export const Homepage = () => {
         "Multi-user support"
       ],
       color: "from-emerald-500 to-green-500"
+    },
+    {
+      id: "billing",
+      title: "Smart Billing System",
+      icon: "🧾",
+      description: "Generate professional invoices instantly using AI-powered product detection and automated price calculation.",
+      highlights: [
+        "AI Camera Product Detection",
+        "One-click Invoice Generation",
+        "PDF Receipt Export",
+        "Dynamic Tax Calculation"
+      ],
+      color: "from-amber-500 to-orange-500"
+    },
+    {
+      id: "history",
+      title: "Billing History & Insights",
+      icon: "📆",
+      description: "Access complete transaction records, search past bills, and analyze daily sales performance.",
+      highlights: [
+        "Searchable Invoice Archive",
+        "Daily Sales Summaries",
+        "Customer Transaction Logs",
+        "Exportable Reports"
+      ],
+      color: "from-indigo-500 to-violet-500"
+    },
+    {
+      id: "accounts",
+      title: "Accounts & Ledger",
+      icon: "📒",
+      description: "Keep track of all financial movements, monitor profit margins, and manage business expenses efficiently.",
+      highlights: [
+        "Real-time Profit/Loss Tracking",
+        "Expense Categorization",
+        "Financial Health Overview",
+        "Cash Flow Monitoring"
+      ],
+      color: "from-rose-500 to-red-500"
     }
   ];
 
