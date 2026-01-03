@@ -1,25 +1,23 @@
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import resend
 from app.config import get_settings
 import logging
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
 
+if settings.resend_api_key:
+    resend.api_key = settings.resend_api_key
+
 def send_welcome_email(to_email: str, username: str, password: str, security_code: str):
     """
     Sends a welcome email to the newly registered owner with their credentials.
-    This function should be called as a background task.
+    Using Resend API.
     """
-    if not settings.smtp_username or not settings.smtp_password:
-        logger.warning("SMTP credentials not configured. Skipping welcome email.")
+    if not settings.resend_api_key:
+        logger.warning("Resend API Key not configured. Skipping welcome email.")
         return
 
     try:
-        subject = "Welcome to SmartStock 360 Management!"
-        
-        # HTML Body
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -47,46 +45,23 @@ def send_welcome_email(to_email: str, username: str, password: str, security_cod
         </html>
         """
 
-        message = MIMEMultipart("alternative")
-        message["Subject"] = subject
-        message["From"] = settings.smtp_from_email
-        message["To"] = to_email
-
-        message.attach(MIMEText(html_content, "html"))
-
-        # Connect and Send
-        # Connect and Send
-        try:
-            if settings.smtp_port == 465:
-                # Use SSL for port 465
-                with smtplib.SMTP_SSL(settings.smtp_server, settings.smtp_port, timeout=10) as server:
-                    server.login(settings.smtp_username, settings.smtp_password)
-                    server.send_message(message)
-            else:
-                # Use STARTTLS for port 587 (or others)
-                with smtplib.SMTP(settings.smtp_server, settings.smtp_port, timeout=10) as server:
-                    server.starttls()
-                    server.login(settings.smtp_username, settings.smtp_password)
-                    server.send_message(message)
-        except smtplib.SMTPAuthenticationError:
-            logger.error("SMTP Authentication Error: Check your username and password.")
-            raise
-        except Exception as e:
-            logger.error(f"SMTP Connection Error: {e}")
-            raise
-            
-        logger.info(f"Welcome email sent successfully to {to_email}")
+        resend.Emails.send({
+            "from": settings.smtp_from_email, # e.g. "SmartStock <onboarding@resend.dev>"
+            "to": to_email,
+            "subject": "Welcome to SmartStock 360 🚀",
+            "html": html_content
+        })
+        logger.info(f"📧 Welcome email sent to {to_email}")
 
     except Exception as e:
-        logger.error(f"Failed to send welcome email into {to_email}: {str(e)}")
+        logger.error(f"❌ Email failed: {e}")
 
 def send_password_change_email(to_email: str, username: str, new_password: str):
     """Sends confirmation email after password change."""
-    if not settings.smtp_username or not settings.smtp_password:
+    if not settings.resend_api_key:
         return
 
     try:
-        subject = "Security Alert: Password Changed - SmartStock 360"
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; color: #333;">
@@ -103,36 +78,24 @@ def send_password_change_email(to_email: str, username: str, new_password: str):
             </body>
         </html>
         """
-        message = MIMEMultipart("alternative")
-        message["Subject"] = subject
-        message["From"] = settings.smtp_from_email
-        message["To"] = to_email
-        message.attach(MIMEText(html_content, "html"))
 
-        if settings.smtp_port == 465:
-            with smtplib.SMTP_SSL(settings.smtp_server, settings.smtp_port, timeout=10) as server:
-                server.login(settings.smtp_username, settings.smtp_password)
-                server.send_message(message)
-        else:
-            with smtplib.SMTP(settings.smtp_server, settings.smtp_port, timeout=10) as server:
-                server.starttls()
-                server.login(settings.smtp_username, settings.smtp_password)
-                server.send_message(message)
-            
-        logger.info(f"Password change email sent to {to_email}")
+        resend.Emails.send({
+            "from": settings.smtp_from_email,
+            "to": to_email,
+            "subject": "Your password has been updated",
+            "html": html_content
+        })
+        logger.info(f"📧 Password change email sent to {to_email}")
+
     except Exception as e:
-        logger.error(f"Failed to send password email: {e}")
+        logger.error(f"❌ Email failed: {e}")
 
 def send_low_stock_alert(product_name: str, company_name: str, current_quantity: int, recipients: list[str]):
-    """
-    Sends a low stock alert to a list of recipients (Owner + Staff).
-    """
-    if not settings.smtp_username or not settings.smtp_password or not recipients:
+    """Sends a low stock alert to a list of recipients."""
+    if not settings.resend_api_key or not recipients:
         return
 
     try:
-        subject = f"ALERT: {product_name} is running low!"
-        
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; color: #333;">
@@ -152,39 +115,23 @@ def send_low_stock_alert(product_name: str, company_name: str, current_quantity:
         </html>
         """
 
-        # Send to each recipient
-        # Note: In a production system, we might use BCC or send individual emails. 
-        # Here we loop for simplicity and personalization if needed later. 
-        # Or just send one email with multiple To/Bcc. 
-        # Loop is safer for avoiding "Reply All" confusion if that matters, but slower. 
-        # Let's use loop for now as volume is low.
+        # Resend supports multiple recipients, but iterating ensures individual tracking/logs if needed.
+        # Can also pass list to "to".
+        # Let's iterate as per previous logic or use batch? Resend batch is separate endpoint.
+        # Simple "to": ["a", "b"] works for getting same email.
         
-        if settings.smtp_port == 465:
-             with smtplib.SMTP_SSL(settings.smtp_server, settings.smtp_port, timeout=10) as server:
-                server.login(settings.smtp_username, settings.smtp_password)
-                for email in recipients:
-                    if not email: continue
-                    msg = MIMEMultipart("alternative")
-                    msg["Subject"] = subject
-                    msg["From"] = settings.smtp_from_email
-                    msg["To"] = email
-                    msg.attach(MIMEText(html_content, "html"))
-                    server.send_message(msg)
-        else:
-            with smtplib.SMTP(settings.smtp_server, settings.smtp_port, timeout=10) as server:
-                server.starttls()
-                server.login(settings.smtp_username, settings.smtp_password)
-                for email in recipients:
-                    if not email: continue
-                    msg = MIMEMultipart("alternative")
-                    msg["Subject"] = subject
-                    msg["From"] = settings.smtp_from_email
-                    msg["To"] = email
-                    msg.attach(MIMEText(html_content, "html"))
-                    server.send_message(msg)
+        # Filter valid emails
+        valid_recipients = [email for email in recipients if email]
+        if not valid_recipients:
+            return
 
-        logger.info(f"Low stock alert sent for {product_name} to {len(recipients)} recipients")
-
+        resend.Emails.send({
+            "from": settings.smtp_from_email,
+            "to": valid_recipients,
+            "subject": f"ALERT: {product_name} is running low!",
+            "html": html_content
+        })
+        logger.info(f"Low stock alert sent to {len(valid_recipients)} recipients")
 
     except Exception as e:
         logger.error(f"Failed to send low stock alert: {e}")
@@ -197,15 +144,11 @@ def send_customer_invoice_email(
     pdf_bytes: bytes,
     reply_to_email: str = None
 ):
-    """
-    Sends the invoice PDF to the customer.
-    """
-    if not settings.smtp_username or not settings.smtp_password:
+    """Sends the invoice PDF to the customer using Resend."""
+    if not settings.resend_api_key:
         return
 
     try:
-        subject = f"Invoice #{invoice_number} from {business_name}"
-        
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
@@ -227,39 +170,28 @@ def send_customer_invoice_email(
         </html>
         """
 
-        message = MIMEMultipart()
-        message["Subject"] = subject
-        # Display name in From header
-        message["From"] = f"{business_name} <{settings.smtp_from_email}>"
-        message["To"] = to_email
+        # Prepare attachments
+        # Resend expects list of dicts: {"content": list of ints, "filename": str}
+        # pdf_bytes to list of ints
+        pdf_content = list(pdf_bytes)
+
+        params = {
+            "from": f"{business_name} <{settings.smtp_from_email}>",
+            "to": to_email,
+            "subject": f"Invoice #{invoice_number} from {business_name}",
+            "html": html_content,
+            "attachments": [
+                {
+                    "content": pdf_content,
+                    "filename": f"Invoice_{invoice_number}.pdf"
+                }
+            ]
+        }
         
         if reply_to_email:
-             message["Reply-To"] = reply_to_email
+            params["reply_to"] = reply_to_email
 
-        # Attach body
-        message.attach(MIMEText(html_content, "html"))
-
-        # Attach PDF
-        from email.mime.application import MIMEApplication
-        pdf_attachment = MIMEApplication(pdf_bytes, _subtype="pdf")
-        pdf_attachment.add_header(
-            "Content-Disposition", 
-            "attachment", 
-            filename=f"Invoice_{invoice_number}.pdf"
-        )
-        message.attach(pdf_attachment)
-
-        # Send
-        if settings.smtp_port == 465:
-             with smtplib.SMTP_SSL(settings.smtp_server, settings.smtp_port, timeout=10) as server:
-                server.login(settings.smtp_username, settings.smtp_password)
-                server.send_message(message)
-        else:
-            with smtplib.SMTP(settings.smtp_server, settings.smtp_port, timeout=10) as server:
-                server.starttls()
-                server.login(settings.smtp_username, settings.smtp_password)
-                server.send_message(message)
-
+        resend.Emails.send(params)
         logger.info(f"Invoice email sent to {to_email}")
 
     except Exception as e:
@@ -272,15 +204,11 @@ def send_invoice_copy_email(
     invoice_number: str, 
     pdf_bytes: bytes
 ):
-    """
-    Sends a COPY of the invoice to the staff/owner.
-    """
-    if not settings.smtp_username or not settings.smtp_password:
+    """Sends a COPY of the invoice to the staff/owner using Resend."""
+    if not settings.resend_api_key:
         return
 
     try:
-        subject = f"[Copy] Invoice #{invoice_number} - {customer_name}"
-        
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
@@ -303,35 +231,20 @@ def send_invoice_copy_email(
         </html>
         """
 
-        message = MIMEMultipart()
-        message["Subject"] = subject
-        message["From"] = f"{business_name} (Record) <{settings.smtp_from_email}>"
-        message["To"] = to_email
-        
-        # Attach body
-        message.attach(MIMEText(html_content, "html"))
+        pdf_content = list(pdf_bytes)
 
-        # Attach PDF
-        from email.mime.application import MIMEApplication
-        pdf_attachment = MIMEApplication(pdf_bytes, _subtype="pdf")
-        pdf_attachment.add_header(
-            "Content-Disposition", 
-            "attachment", 
-            filename=f"Invoice_{invoice_number}.pdf"
-        )
-        message.attach(pdf_attachment)
-
-        # Send
-        if settings.smtp_port == 465:
-             with smtplib.SMTP_SSL(settings.smtp_server, settings.smtp_port, timeout=10) as server:
-                server.login(settings.smtp_username, settings.smtp_password)
-                server.send_message(message)
-        else:
-            with smtplib.SMTP(settings.smtp_server, settings.smtp_port, timeout=10) as server:
-                server.starttls()
-                server.login(settings.smtp_username, settings.smtp_password)
-                server.send_message(message)
-
+        resend.Emails.send({
+            "from": f"{business_name} (Record) <{settings.smtp_from_email}>",
+            "to": to_email,
+            "subject": f"[Copy] Invoice #{invoice_number} - {customer_name}",
+            "html": html_content,
+            "attachments": [
+                {
+                    "content": pdf_content,
+                    "filename": f"Invoice_{invoice_number}.pdf"
+                }
+            ]
+        })
         logger.info(f"Invoice RECORD copy sent to {to_email}")
 
     except Exception as e:

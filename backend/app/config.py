@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from_email: str = "noreply@smartstock360.com"
 
+    resend_api_key: str | None = None
     gemini_api_key: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
