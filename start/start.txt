@@ -1,0 +1,7 @@
+cd C:\Users\Aryaman\OneDrive\Documents\bussiness_Management\backend
+.\.venv\Scripts\Activate.ps1
+uvicorn app.main:app --reload
+
+cd C:\Users\Aryaman\OneDrive\Documents\bussiness_Management\frontend
+npm install  # Only do this once to set up
+npm run dev  # This starts your frontend website

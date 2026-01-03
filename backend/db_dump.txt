@@ -1,0 +1,42 @@
+
+--- Inspecting smartstock.db ---
+Tables: ['users', 'suppliers', 'products', 'sales', 'purchase_orders', 'inventory_items', 'sale_items', 'warranties', 'purchase_order_items', 'price_history', 'stock_movements', 'warranty_claims']
+
+Users table content:
+(1, 'johndoe', 'mobile', 'OWNER')
+(2, 'johnd', 'mobile', 'OWNER')
+(3, 'sam1', 'zafric Studios', 'OWNER')
+(4, 'haaa', 'zafric Studios', 'STAFF')
+(5, 'abcd', 'mobile', 'OWNER')
+(6, 'rohan', 'mobile', 'STAFF')
+(7, 'krishn1', 'arya', 'OWNER')
+(8, 'aryaman', 'arya', 'STAFF')
+(9, 'radhe1', 'kad', 'OWNER')
+(10, 'arya1', 'hdk', 'OWNER')
+(11, 'hari1', 'adkjdka', 'OWNER')
+(14, 'aryaman_841', 'mobile', 'STAFF')
+(15, 'arya', 'mobile', 'STAFF')
+(16, 'viprain', 'mobile', 'STAFF')
+(17, 'rahan', 'mobile', 'STAFF')
+(18, 'vansh1', 'mobile', 'OWNER')
+(19, 'rohan_184', 'mobile', 'STAFF')
+
+--- Inspecting credentials.db ---
+Tables: ['user_credentials_backup', 'user_credentials']
+
+UserCredentials table content:
+(1, 'krishn1', 'kad', 'owner')
+(2, 'radhe1', 'kad', 'owner')
+(3, 'arya1', 'hdk', 'owner')
+(4, 'hari1', 'adkjdka', 'owner')
+(7, 'aryaman', 'mobile', 'staff')
+(8, 'aryaman_841', 'mobile', 'staff')
+(9, 'rohan', 'mobile', 'staff')
+(10, 'arya', 'mobile', 'staff')
+(11, 'viprain', 'mobile', 'staff')
+(12, 'rahan', 'mobile', 'staff')
+(13, 'vansh1', 'mobile', 'owner')
+(14, 'rohan_184', 'mobile', 'staff')
+
+--- Inspecting database.db ---
+File database.db not found!

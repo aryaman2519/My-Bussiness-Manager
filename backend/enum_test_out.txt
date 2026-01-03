@@ -1,0 +1,3 @@
+Stored value: 'STAFF'
+Querying using UserRole.STAFF...
+Found: <__main__.User object at 0x000001F699163230>
