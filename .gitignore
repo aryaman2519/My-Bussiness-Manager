@@ -39,7 +39,10 @@ build/
 
 
 
-
+backend/invoices/
+backend/uploads/
+backend/static/business_images/
+*.pdf
 
 
 
