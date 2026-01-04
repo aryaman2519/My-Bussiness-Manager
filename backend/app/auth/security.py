@@ -18,8 +18,9 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 def verify_password(plain_password: str, stored_password: str) -> bool:
     """
     Verify a stored password against the provided plain password.
+    Truncates input to 72 bytes to match hashing behavior.
     """
-    return pwd_context.verify(plain_password, stored_password)
+    return pwd_context.verify(plain_password[:72], stored_password)
 
 def get_password_hash(password: str) -> str:
     """Hash a password for the main application database."""
