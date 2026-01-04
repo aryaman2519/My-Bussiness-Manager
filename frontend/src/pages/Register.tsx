@@ -33,6 +33,11 @@ export const Register = () => {
       return;
     }
 
+    if (new TextEncoder().encode(formData.password).length > 72) {
+      setError("Password must be 72 characters or fewer");
+      return;
+    }
+
     setIsLoading(true);
 
     try {

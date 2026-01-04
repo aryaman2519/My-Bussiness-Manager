@@ -19,6 +19,14 @@ from app.utils.security_utils import generate_security_code
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
+def validate_password(password: str):
+    """Ensure password fits within bcrypt's 72-byte limit."""
+    if len(password.encode("utf-8")) > 72:
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be 72 characters or fewer"
+        )
+
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -65,6 +73,8 @@ async def register_owner(
         raise HTTPException(status_code=400, detail="Email already registered")
 
     try:
+        validate_password(owner_data.password)
+        
         # Security Code Generator
         security_code = generate_security_code()
 
@@ -200,6 +210,8 @@ async def reset_password_with_code(
         raise HTTPException(status_code=400, detail="Invalid Security Code")
     
     try:
+        validate_password(reset_data.new_password)
+
         # 2. Update Main DB (Hashed)
         hashed_password = get_password_hash(reset_data.new_password)
         current_user.hashed_password = hashed_password
