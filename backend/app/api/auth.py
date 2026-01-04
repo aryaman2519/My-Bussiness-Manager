@@ -87,7 +87,7 @@ async def register_owner(
             created_at=datetime.utcnow(),
         )
         cred_db.add(new_credentials)
-        cred_db.commit()
+        cred_db.flush() # ❗ NO commit yet
 
         # 3. Store HASHED version in main application database
         hashed_password = get_password_hash(owner_data.password)
@@ -104,6 +104,10 @@ async def register_owner(
             created_at=datetime.utcnow(),
         )
         db.add(new_owner)
+        db.flush() # ❗ NO commit yet
+
+        # 4. Commit both ONLY if both succeed
+        cred_db.commit()
         db.commit()
         db.refresh(new_owner)
 
@@ -151,36 +155,29 @@ async def login(
     db: Session = Depends(get_db),
     cred_db: Session = Depends(get_credentials_db),
 ):
-    """Login using plain-text comparison from credentials.db."""
-    print(f"LOGIN ATTEMPT: username={repr(form_data.username)}")
-    print(f"LOGIN ATTEMPT: password={repr(form_data.password)}")
-    
-    cred_user = cred_db.query(UserCredentials).filter(UserCredentials.username == form_data.username).first()
-    
-    if cred_user:
-        print(f"USER FOUND in DB: {repr(cred_user.username)}")
-        print(f"STORED PASSWORD: {repr(cred_user.password)}")
-        print(f"MATCH RESULT: {verify_password(form_data.password, cred_user.password)}")
-    else:
-        print("USER NOT FOUND in DB")
+    # 1. Check credentials DB FIRST
+    cred_user = cred_db.query(UserCredentials).filter(
+        UserCredentials.username == form_data.username
+    ).first()
 
-    # Using the verify_password logic (which we updated to plain-text comparison)
-    if not cred_user or not verify_password(form_data.password, cred_user.password):
+    if not cred_user or cred_user.password != form_data.password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
-    
-    user = db.query(User).filter(User.username == form_data.username).first()
-    
-    # Sync main DB if user only exists in Cred DB
+
+    # 2. Check main DB
+    user = db.query(User).filter(User.username == cred_user.username).first()
+
+    # 3. 🔥 AUTO-SYNC IF MISSING
     if not user:
         user = User(
             username=cred_user.username,
             email=cred_user.email,
-            hashed_password=get_password_hash(cred_user.password),
+            hashed_password=get_password_hash(form_data.password),
             full_name=cred_user.full_name,
             business_name=cred_user.business_name,
+            business_type=cred_user.business_type,
             role=UserRole.OWNER if cred_user.role == "owner" else UserRole.STAFF,
             is_active=True,
             created_at=cred_user.created_at,
@@ -189,7 +186,10 @@ async def login(
         db.commit()
         db.refresh(user)
 
-    access_token = create_access_token(data={"sub": user.username, "role": user.role.value})
+    # 4. Issue token
+    access_token = create_access_token(
+        data={"sub": user.username, "role": user.role.value}
+    )
 
     return {
         "access_token": access_token,
