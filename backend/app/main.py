@@ -7,6 +7,7 @@ from app.api.auth import router as auth_router
 from app.api.staff import router as staff_router
 from app.api.stock import router as stock_router
 from app.config import get_settings
+from app.models.credentials_db import init_credentials_db
 from app.models.database import engine, Base
 from app.models import *  # Import all models to register them
 
@@ -68,6 +69,9 @@ def create_app() -> FastAPI:
         try:
             # Create main database tables
             Base.metadata.create_all(bind=engine)
+            
+            # Create credentials database tables
+            init_credentials_db()
             
             print("✅ Databases initialized successfully!")
             

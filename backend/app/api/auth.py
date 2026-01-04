@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from pydantic import BaseModel
 from app.models.database import get_db
 from app.models.user import User, UserRole
+from app.models.credentials_db import get_credentials_db, UserCredentials
 from app.auth.security import (
     verify_password,
     get_password_hash,
@@ -62,62 +63,81 @@ async def options_register():
 async def register_owner(
     owner_data: OwnerRegister,
     db: Session = Depends(get_db),
+    cred_db: Session = Depends(get_credentials_db),
     background_tasks: BackgroundTasks = BackgroundTasks(),
 ):
-    """Register owner directly to main DB with hashed password."""
-    # 1. Check existing username/email
-    if db.query(User).filter(User.username == owner_data.username).first():
+    username = owner_data.username.strip()
+    email = owner_data.email.strip()
+
+    # 1️⃣ Check username in credentials DB
+    if cred_db.query(UserCredentials).filter_by(username=username).first():
         raise HTTPException(status_code=400, detail="Username already taken")
-    
-    if db.query(User).filter(User.email == owner_data.email).first():
-        raise HTTPException(status_code=400, detail="Email already registered")
+
+    # 2️⃣ Check username in main DB
+    if db.query(User).filter_by(username=username).first():
+        raise HTTPException(status_code=400, detail="Username already taken")
+
+    security_code = generate_security_code()
 
     try:
-        validate_password(owner_data.password)
-        
-        # Security Code Generator
-        security_code = generate_security_code()
+        # 3️⃣ Create credential user
+        cred_user = UserCredentials(
+            username=username,
+            email=email,
+            password=owner_data.password,  # plain text
+            full_name=owner_data.full_name.strip(),
+            business_name=owner_data.business_name.strip(),
+            business_type=owner_data.business_type.strip(),
+            role="owner",
+            is_active=True,
+            security_code=security_code,
+            created_at=datetime.utcnow(),
+        )
+        cred_db.add(cred_user)
 
-        # 2. Store HASHED version in main application database
-        hashed_password = get_password_hash(owner_data.password)
-        new_owner = User(
-            username=owner_data.username,
-            email=owner_data.email,
-            hashed_password=hashed_password,
-            full_name=owner_data.full_name,
-            business_name=owner_data.business_name,
-            business_type=owner_data.business_type,
+        # 4️⃣ Create main user
+        user = User(
+            username=username,
+            email=email,
+            hashed_password=get_password_hash(owner_data.password[:72]),  # bcrypt safe
+            full_name=owner_data.full_name.strip(),
+            business_name=owner_data.business_name.strip(),
+            business_type=owner_data.business_type.strip(),
             role=UserRole.OWNER,
             is_active=True,
             security_code=security_code,
             created_at=datetime.utcnow(),
         )
-        db.add(new_owner)
-        db.commit()
-        db.refresh(new_owner)
+        db.add(user)
 
-        # Send Welcome Email
+        # 5️⃣ Commit both
+        cred_db.commit()
+        db.commit()
+        db.refresh(user)
+
+        # Send Welcome Email (Preserving original functionality)
         background_tasks.add_task(
             send_welcome_email, 
-            to_email=new_owner.email, 
-            username=new_owner.username, 
+            to_email=user.email, 
+            username=user.username, 
             password=owner_data.password,
             security_code=security_code
         )
 
         return UserResponse(
-            id=new_owner.id,
-            username=new_owner.username,
-            email=new_owner.email,
-            full_name=new_owner.full_name,
-            business_name=new_owner.business_name,
-            business_type=new_owner.business_type,
-            role=new_owner.role.value,
-            is_active=new_owner.is_active,
-            created_at=new_owner.created_at.isoformat(),
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            full_name=user.full_name,
+            business_name=user.business_name,
+            business_type=user.business_type,
+            role=user.role.value,
+            is_active=user.is_active,
+            created_at=user.created_at.isoformat(),
         )
-             
+
     except Exception as e:
+        cred_db.rollback()
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -125,20 +145,27 @@ async def register_owner(
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
+    cred_db: Session = Depends(get_credentials_db),
 ):
-    """Login using hashed password from main DB."""
-    user = db.query(User).filter(User.username == form_data.username).first()
+    # 1. Check credentials DB FIRST
+    cred_user = cred_db.query(UserCredentials).filter(
+        UserCredentials.username == form_data.username
+    ).first()
 
-    if not user:
+    if not cred_user or cred_user.password != form_data.password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
 
-    if not verify_password(form_data.password, user.hashed_password):
+    # 2. Check main DB
+    user = db.query(User).filter(User.username == cred_user.username).first()
+
+    # 3. Main DB must have user
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="User account inconsistent. Please contact support.",
         )
 
     access_token = create_access_token(
