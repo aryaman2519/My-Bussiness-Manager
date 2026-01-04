@@ -7,7 +7,6 @@ from sqlalchemy.exc import IntegrityError
 from pydantic import BaseModel
 from app.models.database import get_db
 from app.models.user import User, UserRole
-from app.models.credentials_db import get_credentials_db, UserCredentials, init_credentials_db
 from app.auth.security import (
     verify_password,
     get_password_hash,
@@ -28,7 +27,7 @@ class Token(BaseModel):
 class OwnerRegister(BaseModel):
     full_name: str
     business_name: str
-    business_type: str  # New field
+    business_type: str
     username: str
     email: str
     password: str
@@ -39,7 +38,7 @@ class UserResponse(BaseModel):
     email: Optional[str]
     full_name: str
     business_name: Optional[str]
-    business_type: Optional[str] # New field
+    business_type: Optional[str]
     role: str
     is_active: bool
     created_at: str
@@ -55,59 +54,35 @@ async def options_register():
 async def register_owner(
     owner_data: OwnerRegister,
     db: Session = Depends(get_db),
-    cred_db: Session = Depends(get_credentials_db),
     background_tasks: BackgroundTasks = BackgroundTasks(),
 ):
-    """Register owner: plain text in credentials.db, hashed in main db. Handles errors gracefully."""
+    """Register owner directly to main DB with hashed password."""
+    # 1. Check existing username/email
+    if db.query(User).filter(User.username == owner_data.username).first():
+        raise HTTPException(status_code=400, detail="Username already taken")
+    
+    if db.query(User).filter(User.email == owner_data.email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+
     try:
-        init_credentials_db()
-        
-        username = owner_data.username.strip()
-        email = owner_data.email.strip()
-        
         # Security Code Generator
         security_code = generate_security_code()
 
-        # 1. Check uniqueness in Credentials DB (Optimistic check, real check is try/except)
-        if cred_db.query(UserCredentials).filter(UserCredentials.username == username).first():
-             raise HTTPException(status_code=400, detail="Username is taken. Please choose another one.")
-
-        # 2. Store PLAIN TEXT in credentials database
-        new_credentials = UserCredentials(
-            username=username,
-            email=email,
-            password=owner_data.password,  # SAVED AS PLAIN TEXT
-            full_name=owner_data.full_name.strip(),
-            business_name=owner_data.business_name.strip(),
-            business_type=owner_data.business_type.strip(),
-            role="owner",
-            is_active=True,
-            is_auto_generated=False,
-            security_code=security_code,
-            created_at=datetime.utcnow(),
-        )
-        cred_db.add(new_credentials)
-        cred_db.flush() # ❗ NO commit yet
-
-        # 3. Store HASHED version in main application database
+        # 2. Store HASHED version in main application database
         hashed_password = get_password_hash(owner_data.password)
         new_owner = User(
-            username=username,
-            email=email,
-            hashed_password=hashed_password, # SAVED AS HASH
-            full_name=owner_data.full_name.strip(),
-            business_name=owner_data.business_name.strip(),
-            business_type=owner_data.business_type.strip(),
+            username=owner_data.username,
+            email=owner_data.email,
+            hashed_password=hashed_password,
+            full_name=owner_data.full_name,
+            business_name=owner_data.business_name,
+            business_type=owner_data.business_type,
             role=UserRole.OWNER,
             is_active=True,
             security_code=security_code,
             created_at=datetime.utcnow(),
         )
         db.add(new_owner)
-        db.flush() # ❗ NO commit yet
-
-        # 4. Commit both ONLY if both succeed
-        cred_db.commit()
         db.commit()
         db.refresh(new_owner)
 
@@ -131,62 +106,31 @@ async def register_owner(
             is_active=new_owner.is_active,
             created_at=new_owner.created_at.isoformat(),
         )
-        
-    except IntegrityError as e:
-        cred_db.rollback()
-        db.rollback()
-        error_msg = str(e.orig).lower() if hasattr(e, 'orig') else str(e).lower()
-        if "users.email" in error_msg or "email" in error_msg:
-             raise HTTPException(status_code=400, detail="This email is already registered. Please log in or use a different email.")
-        elif "users.username" in error_msg or "username" in error_msg:
-             raise HTTPException(status_code=400, detail="This username is taken. Please choose another one.")
-        else:
-             raise HTTPException(status_code=400, detail="Account already exists (username or email).")
              
     except Exception as e:
-        cred_db.rollback()
         db.rollback()
-        # Clean up partial state if necessary
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/token", response_model=Token)
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
-    cred_db: Session = Depends(get_credentials_db),
 ):
-    # 1. Check credentials DB FIRST
-    cred_user = cred_db.query(UserCredentials).filter(
-        UserCredentials.username == form_data.username
-    ).first()
+    """Login using hashed password from main DB."""
+    user = db.query(User).filter(User.username == form_data.username).first()
 
-    if not cred_user or cred_user.password != form_data.password:
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
 
-    # 2. Check main DB
-    user = db.query(User).filter(User.username == cred_user.username).first()
-
-    # 3. 🔥 AUTO-SYNC IF MISSING
-    if not user:
-        user = User(
-            username=cred_user.username,
-            email=cred_user.email,
-            hashed_password=get_password_hash(form_data.password),
-            full_name=cred_user.full_name,
-            business_name=cred_user.business_name,
-            business_type=cred_user.business_type,
-            role=UserRole.OWNER if cred_user.role == "owner" else UserRole.STAFF,
-            is_active=True,
-            created_at=cred_user.created_at,
+    if not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
         )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
 
-    # 4. Issue token
     access_token = create_access_token(
         data={"sub": user.username, "role": user.role.value}
     )
@@ -244,38 +188,24 @@ async def verify_token(current_user: User = Depends(get_current_active_user)):
 async def reset_password_with_code(
     reset_data: PasswordReset,
     db: Session = Depends(get_db),
-    cred_db: Session = Depends(get_credentials_db),
     current_user: User = Depends(get_current_active_user),
     background_tasks: BackgroundTasks = BackgroundTasks(),
 ):
     """
     Reset password using the Verified Security Code.
-    Updates both Credentials DB (plain text) and Main DB (hashed).
+    Updates Main DB (hashed).
     """
-    # 1. Verify Code Again (Security Best Practice)
+    # 1. Verify Code Again
     if not current_user.security_code or current_user.security_code != reset_data.security_code.strip():
         raise HTTPException(status_code=400, detail="Invalid Security Code")
     
     try:
-        # 2. Update Credentials DB (Plain Text)
-        cred_user = cred_db.query(UserCredentials).filter(UserCredentials.username == current_user.username).first()
-        if cred_user:
-            cred_user.password = reset_data.new_password
-            cred_db.commit()
-            
-        # 3. Update Main DB (Hashed)
+        # 2. Update Main DB (Hashed)
         hashed_password = get_password_hash(reset_data.new_password)
         current_user.hashed_password = hashed_password
         db.commit()
         
-        # 4. Send Confirmation Email (TODO: Implement proper email function if needed, reusing welcome for now or generic)
-        # Request says: "automatically send a confirmation email... containing Username and New Updated Password"
-        # We can reuse send_welcome_email or create a new one. Let's create a quick one or adapt.
-        # For this turn, I will just return success, but task says "Success Notification... via email"
-        # I'll add a simple email function task or reuse existing if possible.
-        # Let's add send_password_change_email to email.py quickly.
-        
-        # 4. Send Confirmation Email
+        # 3. Send Confirmation Email
         if current_user.email:
             background_tasks.add_task(
                 send_password_change_email,
@@ -287,7 +217,6 @@ async def reset_password_with_code(
         return {"message": "Password updated successfully"}
         
     except Exception as e:
-        cred_db.rollback()
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -295,7 +224,6 @@ async def reset_password_with_code(
 def delete_account(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
-    cred_db: Session = Depends(get_credentials_db),
 ):
     """
     Delete the current user's account.
@@ -326,7 +254,6 @@ def delete_account(
 
         if sale_ids:
             # A. Delete Warranty Claims
-            # Find warranties related to these sales
             warranties = db.query(Warranty).filter(Warranty.sale_id.in_(sale_ids)).all()
             warranty_ids = [w.id for w in warranties]
             if warranty_ids:
@@ -350,23 +277,14 @@ def delete_account(
         db.query(Stock).filter(Stock.owner_id == owner_id).delete(synchronize_session=False)
         
         # 5. Delete Staff Members (Main DB)
-        # Note: Delete users with owner_id = current_user.id
         db.query(User).filter(User.owner_id == owner_id).delete(synchronize_session=False)
         
-        # 6. Delete User Credentials (Owner + Staff)
-        cred_db.query(UserCredentials).filter(
-            (UserCredentials.username == current_user.username) | 
-            (UserCredentials.owner_id == owner_id)
-        ).delete(synchronize_session=False)
-        cred_db.commit()
-
-        # 7. Delete the Owner User
+        # 6. Delete the Owner User
         db.delete(current_user)
         db.commit()
         
     except Exception as e:
         db.rollback()
-        cred_db.rollback()
         print(f"Delete Error: {e}") # Log to console
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

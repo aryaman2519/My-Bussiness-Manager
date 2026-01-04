@@ -17,15 +17,13 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 def verify_password(plain_password: str, stored_password: str) -> bool:
     """
-    Updated to support plain text comparison.
-    In a real app, this would use pwd_context.verify.
+    Verify a stored password against the provided plain password.
     """
-    return plain_password == stored_password
+    return pwd_context.verify(plain_password, stored_password)
 
 def get_password_hash(password: str) -> str:
     """Hash a password for the main application database."""
-    # TEMP: return plain text to avoid bcrypt crash
-    return password
+    return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Create a JWT access token."""
