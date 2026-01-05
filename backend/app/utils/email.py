@@ -42,18 +42,19 @@ def send_email_smtp(to_email: str, subject: str, html_content: str, attachment: 
             logger.error(f"DNS Resolution failed: {e}")
             target_ip = settings.smtp_server
 
+        # Prepare SSL Context (Ignore hostname check since we use raw IP)
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+
         if settings.smtp_port == 465:
-            # Use SSL directly
-            # We connect to IP, so we must disable check_hostname to avoid mismatch error
-            context = ssl.create_default_context()
-            context.check_hostname = False
-            context.verify_mode = ssl.CERT_NONE  # Accept the Google cert without IP validation
-            
+            # Use SSL directly (Port 465)
             server = smtplib.SMTP_SSL(target_ip, settings.smtp_port, context=context)
         else:
-            # Use TLS (Port 587 usually)
+            # Use TLS (Port 587 default)
             server = smtplib.SMTP(target_ip, settings.smtp_port)
-            server.starttls()
+            # server.set_debuglevel(1) # Enable if needed
+            server.starttls(context=context)
             
         server.login(settings.smtp_username, settings.smtp_password)
         server.send_message(msg)
