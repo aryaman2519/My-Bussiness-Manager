@@ -113,6 +113,39 @@ def create_app() -> FastAPI:
 
         return {"status": "ok"}
     
+    # --- EMERGENCY ADMIN TOOL (Remove later) ---
+    from app.models.credentials_db import get_credentials_db, UserCredentials
+    from app.models.user import User
+    from sqlalchemy.orm import Session
+    from fastapi import Depends
+
+    @app.get("/admin/nuke-email")
+    def nuke_email_endpoint(email: str, db: Session = Depends(get_db), cred_db: Session = Depends(get_credentials_db)):
+        """
+        Emergency tool to force-delete a user by email from BOTH databases.
+        Usage: /admin/nuke-email?email=test@example.com
+        """
+        try:
+            # Delete from Main DB
+            deleted_main = db.query(User).filter(User.email == email).delete(synchronize_session=False)
+            
+            # Delete from Credentials DB
+            deleted_cred = cred_db.query(UserCredentials).filter(UserCredentials.email == email).delete(synchronize_session=False)
+            
+            db.commit()
+            cred_db.commit()
+            
+            return {
+                "status": "success", 
+                "message": f"Nuked {email}", 
+                "deleted_main_count": deleted_main, 
+                "deleted_cred_count": deleted_cred
+            }
+        except Exception as e:
+            db.rollback()
+            cred_db.rollback()
+            return {"status": "error", "detail": str(e)}
+    
     return app
 
 
