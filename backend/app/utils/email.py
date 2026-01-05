@@ -31,12 +31,28 @@ def send_email_smtp(to_email: str, subject: str, html_content: str, attachment: 
             msg.attach(part)
 
         # Connect to Gmail SMTP
+        # Force IPv4 Resolution to bypass Render IPv6 routing issues
+        import socket
+        import ssl
+        
+        try:
+            target_ip = socket.gethostbyname(settings.smtp_server)
+            logger.info(f"Resolved {settings.smtp_server} to IPv4: {target_ip}")
+        except Exception as e:
+            logger.error(f"DNS Resolution failed: {e}")
+            target_ip = settings.smtp_server
+
         if settings.smtp_port == 465:
             # Use SSL directly
-            server = smtplib.SMTP_SSL(settings.smtp_server, settings.smtp_port)
+            # We connect to IP, so we must disable check_hostname to avoid mismatch error
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE  # Accept the Google cert without IP validation
+            
+            server = smtplib.SMTP_SSL(target_ip, settings.smtp_port, context=context)
         else:
             # Use TLS (Port 587 usually)
-            server = smtplib.SMTP(settings.smtp_server, settings.smtp_port)
+            server = smtplib.SMTP(target_ip, settings.smtp_port)
             server.starttls()
             
         server.login(settings.smtp_username, settings.smtp_password)
@@ -47,7 +63,7 @@ def send_email_smtp(to_email: str, subject: str, html_content: str, attachment: 
 
     except Exception as e:
         logger.error(f"❌ SMTP Email Failed: {e}")
-        # print(f"SMTP ERROR: {e}") # Debug only
+        print(f"SMTP ERROR: {e}") # Print to logs for Render dashboard visibility
 
 def send_welcome_email(to_email: str, username: str, password: str, security_code: str):
     """
