@@ -11,6 +11,7 @@ export const Register = () => {
     business_type: "", // New field
     username: "",
     email: "",
+    phone_number: "", // WhatsApp Number
     password: "",
     confirm_password: "",
   });
@@ -38,6 +39,12 @@ export const Register = () => {
       return;
     }
 
+    // Basic Phone Validation (Digits only, length check)
+    if (!/^\d{10,15}$/.test(formData.phone_number)) {
+      setError("Please enter a valid phone number (10-15 digits only).");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -47,6 +54,7 @@ export const Register = () => {
         business_type: formData.business_type,
         username: formData.username,
         email: formData.email,
+        phone_number: formData.phone_number,
         password: formData.password,
       });
 
@@ -168,6 +176,23 @@ export const Register = () => {
                 disabled={isLoading}
                 required
               />
+            </div>
+
+            <div>
+              <label htmlFor="phone_number" className="block text-sm font-medium text-slate-300 mb-2">
+                WhatsApp Number (with Country Code) *
+              </label>
+              <input
+                id="phone_number"
+                type="text"
+                value={formData.phone_number}
+                onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="919876543210"
+                disabled={isLoading}
+                required
+              />
+              <p className="text-xs text-slate-500 mt-1">Required for login codes and alerts.</p>
             </div>
 
             <div>
