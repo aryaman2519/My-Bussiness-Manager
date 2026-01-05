@@ -21,7 +21,13 @@ class Settings(BaseSettings):
     twilio_whatsapp_number: str = ""
 
     # Email Settings
-    # Email Settings
+    # WhatsApp Settings (Meta Cloud API)
+    whatsapp_phone_number_id: str = ""
+    whatsapp_access_token: str = ""
+    whatsapp_verify_token: str = "" # Optional (for webhooks)
+    whatsapp_business_account_id: str = "" # Optional
+
+    # Email Settings (Legacy/Backup)
     smtp_server: str = "smtp.gmail.com"
     smtp_port: int = 587
     smtp_username: str = ""

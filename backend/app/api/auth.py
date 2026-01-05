@@ -39,12 +39,14 @@ class OwnerRegister(BaseModel):
     business_type: str
     username: str
     email: str
+    phone_number: str # e.g. 919876543210
     password: str
 
 class UserResponse(BaseModel):
     id: int
     username: str
     email: Optional[str]
+    phone_number: Optional[str]
     full_name: str
     business_name: Optional[str]
     business_type: Optional[str]
@@ -68,10 +70,15 @@ async def register_owner(
 ):
     username = owner_data.username.strip()
     email = owner_data.email.strip()
+    phone_number = owner_data.phone_number.strip()
 
     # 1️⃣ Check username in credentials DB
     if cred_db.query(UserCredentials).filter_by(username=username).first():
         raise HTTPException(status_code=400, detail="Username already taken")
+
+    # 1.5 Check if phone number is already registered (Optional, but good practice)
+    if cred_db.query(UserCredentials).filter_by(phone_number=phone_number).first():
+        raise HTTPException(status_code=400, detail="Phone number already registered")
 
     # 2️⃣ Check username in main DB
     if db.query(User).filter_by(username=username).first():
@@ -87,6 +94,7 @@ async def register_owner(
         cred_user = UserCredentials(
             username=username,
             email=email,
+            phone_number=phone_number,
             password=hashed_password,  # Storing HASHED password
             full_name=owner_data.full_name.strip(),
             business_name=owner_data.business_name.strip(),
@@ -102,6 +110,7 @@ async def register_owner(
         user = User(
             username=username,
             email=email,
+            phone_number=phone_number,
             hashed_password=hashed_password, # Use SAME hash
             full_name=owner_data.full_name.strip(),
             business_name=owner_data.business_name.strip(),
@@ -118,20 +127,20 @@ async def register_owner(
         db.commit()
         db.refresh(user)
 
-        # Send Welcome Email (Preserving original functionality)
-        # Send Welcome Email (Preserving original functionality)
+        # Send Welcome WhatsApp
+        from app.utils.whatsapp import send_welcome_whatsapp
         background_tasks.add_task(
-            send_welcome_email, 
-            to_email=user.email, 
-            username=user.username, 
-            password=owner_data.password,
-            security_code=security_code
+            send_welcome_whatsapp, 
+            to_number=user.phone_number, 
+            business_name=user.business_name, 
+            username=user.username
         )
 
         return UserResponse(
             id=user.id,
             username=user.username,
             email=user.email,
+            phone_number=user.phone_number,
             full_name=user.full_name,
             business_name=user.business_name,
             business_type=user.business_type,

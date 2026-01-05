@@ -16,6 +16,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True, nullable=True)  # Optional - staff might not have email
+    phone_number = Column(String, unique=True, index=True, nullable=True) # WhatsApp Number (Country Code included)
     hashed_password = Column(String, nullable=False)
     full_name = Column(String, nullable=False)
     business_name = Column(String, nullable=True)  # Required for owners, inherited for staff
