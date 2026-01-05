@@ -8,7 +8,6 @@ interface User {
   username: string;
   email: string;
   full_name: string;
-  full_name: string;
   business_name: string;
   phone_number?: string; // Optional for legacy
   business_type?: string; // Optional because legacy users might not have it yet

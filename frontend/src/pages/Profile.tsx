@@ -120,160 +120,159 @@ export const Profile = () => {
                             <div className="space-y-1">
                                 <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Email Address</label>
                                 <div className="text-slate-200 font-medium px-4 py-2">
-                                    <div className="text-slate-200 font-medium px-4 py-2">
-                                        {user?.email || "No email provided"}
-                                    </div>
+                                    {user?.email || "No email provided"}
                                 </div>
-
-                                <div className="space-y-1">
-                                    <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Mobile Number</label>
-                                    <div className="text-slate-200 font-medium px-4 py-2 font-mono">
-                                        {user?.phone_number || "N/A"}
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Account ID</label>
-                                    <div className="text-slate-400 font-mono text-sm px-4 py-2">
-                                        #{user?.id}
-                                    </div>
-                                </div>
-
-                                {/* Reporting To (For Staff) */}
-                                {!isOwner && (user as any)?.owner_name && (
-                                    <div className="space-y-1 col-span-full">
-                                        <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Reporting To</label>
-                                        <div className="text-blue-400 font-medium px-4 py-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                                            Owner: {(user as any)?.owner_name}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
-                        </div>
 
-                        <div className="bg-slate-950/50 px-8 py-4 border-t border-slate-800 flex justify-between items-center">
-                            <span className="text-xs text-slate-500">
-                                {isOwner
-                                    ? "As an Owner, you can manage staff and inventory."
-                                    : "As Staff, you have restricted access to inventory management."}
-                            </span>
-                        </div>
-                    </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Mobile Number</label>
+                                <div className="text-slate-200 font-medium px-4 py-2 font-mono">
+                                    {user?.phone_number || "N/A"}
+                                </div>
+                            </div>
 
-                    {/* Password Change Section */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 shadow-lg">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold text-white">Security Settings</h2>
-                            {!isChangingPassword && (
-                                <button
-                                    onClick={() => setIsChangingPassword(true)}
-                                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors text-sm font-medium"
-                                >
-                                    Change Password
-                                </button>
+                            <div className="space-y-1">
+                                <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Account ID</label>
+                                <div className="text-slate-400 font-mono text-sm px-4 py-2">
+                                    #{user?.id}
+                                </div>
+                            </div>
+
+                            {/* Reporting To (For Staff) */}
+                            {!isOwner && (user as any)?.owner_name && (
+                                <div className="space-y-1 col-span-full">
+                                    <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Reporting To</label>
+                                    <div className="text-blue-400 font-medium px-4 py-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                                        Owner: {(user as any)?.owner_name}
+                                    </div>
+                                </div>
                             )}
                         </div>
+                    </div>
 
-                        {message.text && (
-                            <div className={`p-4 mb-6 rounded-lg ${message.type === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-green-500/10 text-green-400 border border-green-500/20'}`}>
-                                {message.text}
-                            </div>
-                        )}
+                    <div className="bg-slate-950/50 px-8 py-4 border-t border-slate-800 flex justify-between items-center">
+                        <span className="text-xs text-slate-500">
+                            {isOwner
+                                ? "As an Owner, you can manage staff and inventory."
+                                : "As Staff, you have restricted access to inventory management."}
+                        </span>
+                    </div>
+                </div>
 
-                        {isChangingPassword && (
-                            <div className="bg-slate-950 p-6 rounded-xl border border-slate-800">
-                                <div className="flex items-center gap-4 mb-6">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${step === 1 ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'}`}>1</div>
-                                    <div className="h-0.5 flex-1 bg-slate-800"></div>
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${step === 2 ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-500'}`}>2</div>
-                                </div>
-
-                                {step === 1 ? (
-                                    <form onSubmit={handleVerifyCode} className="space-y-4">
-                                        <h3 className="text-white font-medium">Verify Identity</h3>
-                                        <p className="text-sm text-slate-400">Enter your 8-digit Security Code found in your welcome email.</p>
-                                        <input
-                                            type="text"
-                                            value={securityCode}
-                                            onChange={(e) => setSecurityCode(e.target.value)}
-                                            placeholder="Enter Security Code"
-                                            className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            required
-                                        />
-                                        <div className="flex gap-3">
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsChangingPassword(false)}
-                                                className="px-4 py-2 text-slate-400 hover:text-white"
-                                            >
-                                                Cancel
-                                            </button>
-                                            <button
-                                                type="submit"
-                                                disabled={isLoading}
-                                                className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium disabled:opacity-50"
-                                            >
-                                                {isLoading ? "Verifying..." : "Verify Code"}
-                                            </button>
-                                        </div>
-                                    </form>
-                                ) : (
-                                    <form onSubmit={handleResetPassword} className="space-y-4">
-                                        <h3 className="text-white font-medium">Set New Password</h3>
-                                        <p className="text-sm text-slate-400">Enter your new password.</p>
-                                        <input
-                                            type="password"
-                                            value={newPassword}
-                                            onChange={(e) => setNewPassword(e.target.value)}
-                                            placeholder="New Password"
-                                            minLength={6}
-                                            className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            required
-                                        />
-                                        <div className="flex gap-3">
-                                            <button
-                                                type="button"
-                                                onClick={() => setStep(1)}
-                                                className="px-4 py-2 text-slate-400 hover:text-white"
-                                            >
-                                                Back
-                                            </button>
-                                            <button
-                                                type="submit"
-                                                disabled={isLoading}
-                                                className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-medium disabled:opacity-50"
-                                            >
-                                                {isLoading ? "Saving..." : "Reset Password"}
-                                            </button>
-                                        </div>
-                                    </form>
-                                )}
-                            </div>
+                {/* Password Change Section */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 shadow-lg">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-xl font-bold text-white">Security Settings</h2>
+                        {!isChangingPassword && (
+                            <button
+                                onClick={() => setIsChangingPassword(true)}
+                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors text-sm font-medium"
+                            >
+                                Change Password
+                            </button>
                         )}
                     </div>
 
-                    {/* Danger Zone */}
-                    {/* Danger Zone - Owners Only */}
-                    {isOwner && (
-                        <div className="mt-12 border-t border-red-500/20 pt-8">
-                            <h2 className="text-xl font-semibold text-red-400 mb-4">Danger Zone</h2>
-                            <div className="bg-red-500/5 border border-red-500/10 rounded-lg p-6 flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-white font-medium mb-1">Delete Account</h3>
-                                    <p className="text-slate-400 text-sm">
-                                        Permanently delete your account and all associated data. This action cannot be undone.
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={handleDeleteAccount}
-                                    className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg transition-all font-medium"
-                                >
-                                    Delete Account
-                                </button>
+                    {message.text && (
+                        <div className={`p-4 mb-6 rounded-lg ${message.type === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-green-500/10 text-green-400 border border-green-500/20'}`}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    {isChangingPassword && (
+                        <div className="bg-slate-950 p-6 rounded-xl border border-slate-800">
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${step === 1 ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'}`}>1</div>
+                                <div className="h-0.5 flex-1 bg-slate-800"></div>
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${step === 2 ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-500'}`}>2</div>
                             </div>
+
+                            {step === 1 ? (
+                                <form onSubmit={handleVerifyCode} className="space-y-4">
+                                    <h3 className="text-white font-medium">Verify Identity</h3>
+                                    <p className="text-sm text-slate-400">Enter your 8-digit Security Code found in your welcome email.</p>
+                                    <input
+                                        type="text"
+                                        value={securityCode}
+                                        onChange={(e) => setSecurityCode(e.target.value)}
+                                        placeholder="Enter Security Code"
+                                        className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        required
+                                    />
+                                    <div className="flex gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsChangingPassword(false)}
+                                            className="px-4 py-2 text-slate-400 hover:text-white"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={isLoading}
+                                            className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium disabled:opacity-50"
+                                        >
+                                            {isLoading ? "Verifying..." : "Verify Code"}
+                                        </button>
+                                    </div>
+                                </form>
+                            ) : (
+                                <form onSubmit={handleResetPassword} className="space-y-4">
+                                    <h3 className="text-white font-medium">Set New Password</h3>
+                                    <p className="text-sm text-slate-400">Enter your new password.</p>
+                                    <input
+                                        type="password"
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        placeholder="New Password"
+                                        minLength={6}
+                                        className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        required
+                                    />
+                                    <div className="flex gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setStep(1)}
+                                            className="px-4 py-2 text-slate-400 hover:text-white"
+                                        >
+                                            Back
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={isLoading}
+                                            className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-medium disabled:opacity-50"
+                                        >
+                                            {isLoading ? "Saving..." : "Reset Password"}
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
                         </div>
                     )}
                 </div>
+
+                {/* Danger Zone */}
+                {/* Danger Zone - Owners Only */}
+                {isOwner && (
+                    <div className="mt-12 border-t border-red-500/20 pt-8">
+                        <h2 className="text-xl font-semibold text-red-400 mb-4">Danger Zone</h2>
+                        <div className="bg-red-500/5 border border-red-500/10 rounded-lg p-6 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-white font-medium mb-1">Delete Account</h3>
+                                <p className="text-slate-400 text-sm">
+                                    Permanently delete your account and all associated data. This action cannot be undone.
+                                </p>
+                            </div>
+                            <button
+                                onClick={handleDeleteAccount}
+                                className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg transition-all font-medium"
+                            >
+                                Delete Account
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
-            );
+        </div>
+    );
 };
