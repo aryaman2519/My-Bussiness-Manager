@@ -115,11 +115,14 @@ async def create_staff(
         generated_password = generate_password(8)
         security_code = generate_security_code()
         
-        # Store credentials in credentials database (plain password)
+        # Calculate hash ONCE
+        hashed_password = get_password_hash(generated_password)
+
+        # Store credentials in credentials database (HASHED password now)
         new_credentials = UserCredentials(
             username=generated_username,
             email=staff_data.email,  # Staff email
-            password=generated_password,  # Store plain password
+            password=hashed_password,  # Store HASHED password
             full_name=staff_data.staff_name.strip(),
             business_name=business_name,
             business_type=owner.business_type, # Inherit business type
@@ -134,12 +137,12 @@ async def create_staff(
         cred_db.commit()
         cred_db.refresh(new_credentials)
         
-        # Also create user in main database for application use (hash for main DB)
-        hashed_password = get_password_hash(generated_password)
+        # Also create user in main database
         new_staff = User(
             username=generated_username,
             email=staff_data.email, # Save email in main DB too
-            hashed_password=hashed_password,
+            hashed_password=hashed_password, # Use message hash
+
             full_name=staff_data.staff_name.strip(),
             business_name=business_name,
             business_type=owner.business_type, # Inherit business type

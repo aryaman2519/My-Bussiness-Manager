@@ -81,10 +81,13 @@ async def register_owner(
 
     try:
         # 3️⃣ Create credential user
+        # User requested to store HASHED password in credentials DB to avoid plaintext storage
+        hashed_password = get_password_hash(owner_data.password)
+        
         cred_user = UserCredentials(
             username=username,
             email=email,
-            password=owner_data.password,  # plain text
+            password=hashed_password,  # Storing HASHED password
             full_name=owner_data.full_name.strip(),
             business_name=owner_data.business_name.strip(),
             business_type=owner_data.business_type.strip(),
@@ -99,7 +102,7 @@ async def register_owner(
         user = User(
             username=username,
             email=email,
-            hashed_password=get_password_hash(owner_data.password[:72]),  # bcrypt safe
+            hashed_password=hashed_password, # Use SAME hash
             full_name=owner_data.full_name.strip(),
             business_name=owner_data.business_name.strip(),
             business_type=owner_data.business_type.strip(),
@@ -147,25 +150,20 @@ async def login(
     db: Session = Depends(get_db),
     cred_db: Session = Depends(get_credentials_db),
 ):
-    # 1. Check credentials DB FIRST
-    cred_user = cred_db.query(UserCredentials).filter(
-        UserCredentials.username == form_data.username
-    ).first()
+    # 1. Login using ONLY main DB hash (Single Source of Truth)
+    user = db.query(User).filter(User.username == form_data.username).first()
 
-    if not cred_user or cred_user.password != form_data.password:
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
 
-    # 2. Check main DB
-    user = db.query(User).filter(User.username == cred_user.username).first()
-
-    # 3. Main DB must have user
-    if not user:
+    # 2. Verify password (hash-check)
+    if not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User account inconsistent. Please contact support.",
+            detail="Incorrect username or password",
         )
 
     access_token = create_access_token(
