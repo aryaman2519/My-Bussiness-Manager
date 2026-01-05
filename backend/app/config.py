@@ -22,7 +22,11 @@ class Settings(BaseSettings):
 
     # Email Settings
     # Email Settings
-    from_email: str = "onboarding@resend.dev"
+    smtp_server: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    from_email: str = "noreply@smartstock360.com"
 
     resend_api_key: str | None = None
     gemini_api_key: str | None = None

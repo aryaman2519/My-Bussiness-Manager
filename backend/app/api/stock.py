@@ -235,7 +235,8 @@ async def add_or_update_stock(
                     if existing_stock.last_alert_sent:
                          # Ensure database value is treated as naive (it usually is)
                          last_sent = existing_stock.last_alert_sent
-                         if now_ist_naive - last_sent > timedelta(hours=24):
+                         # DEV MODE: Cooldown reduced to 1 minute for easier testing
+                         if now_ist_naive - last_sent > timedelta(minutes=1):
                              should_alert = True
                 
                 if should_alert:
@@ -259,18 +260,19 @@ async def add_or_update_stock(
                     # Convert set to list for email function
                     recipients_list = list(recipients)
 
-                    background_tasks.add_task(
-                        send_low_stock_alert,
-                        product_name=existing_stock.product_name,
-                        company_name=existing_stock.company_name,
-                        current_quantity=existing_stock.quantity,
-                        recipients=recipients_list
-                    )
-                    # Store as Naive IST
-                    existing_stock.last_alert_sent = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
-
+                    if recipients_list:
+                        background_tasks.add_task(
+                            send_low_stock_alert,
+                            product_name=existing_stock.product_name,
+                            company_name=existing_stock.company_name,
+                            current_quantity=existing_stock.quantity,
+                            recipients=recipients_list
+                        )
+                        # Store as Naive IST
+                        existing_stock.last_alert_sent = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
+            
             # Auto-Log Expense if Cost Price & Quantity provided (and positive)
-            print(f"DEBUG: Processing Expense. Qty: {stock_data.quantity}, Cost: {stock_data.cost_price}")
+
             if stock_data.quantity > 0 and stock_data.cost_price and stock_data.cost_price > 0:
                 print("DEBUG: Condition Met. Creating Transaction...")
                 total_cost = stock_data.quantity * stock_data.cost_price
