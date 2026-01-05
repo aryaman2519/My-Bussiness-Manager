@@ -18,13 +18,33 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 def verify_password(plain_password: str, stored_password: str) -> bool:
     """
     Verify a stored password against the provided plain password.
-    Truncates input to 72 bytes to match hashing behavior.
     """
-    return pwd_context.verify(plain_password[:72], stored_password)
+    # Truncate to 72 bytes strictly to match hashing behavior
+    b_plain = plain_password.encode("utf-8")
+    if len(b_plain) > 72:
+        b_plain = b_plain[:72]
+    
+    # DECISION: Passlib/Bcrypt can be finicky with bytes on some platforms
+    # Decode back to utf-8 string, ignoring errors (lossy is fine for truncation)
+    valid_str = b_plain.decode("utf-8", errors="ignore")
+    
+    return pwd_context.verify(valid_str, stored_password)
 
 def get_password_hash(password: str) -> str:
     """Hash a password for the main application database."""
-    return pwd_context.hash(password[:72])
+    print(f"DEBUG: Input PW Len: {len(password)}")
+    
+    # Ensure strict 72-byte limit
+    b = password.encode("utf-8")
+    if len(b) > 72:
+        print("DEBUG: Truncating password bytes")
+        b = b[:72]
+        
+    # DECISION: Decode back to utf-8 string for maximum compatibility
+    valid_str = b.decode("utf-8", errors="ignore")
+    print(f"DEBUG: Hashing final string of len: {len(valid_str)}")
+    
+    return pwd_context.hash(valid_str)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Create a JWT access token."""
