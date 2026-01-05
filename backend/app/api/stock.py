@@ -240,7 +240,6 @@ async def add_or_update_stock(
                              should_alert = True
                 
                 if should_alert:
-                if should_alert:
                     # Fetch recipients: Owner + ALL Staff members (Phone Numbers)
                     phone_numbers = set()
                     
