@@ -27,9 +27,6 @@ def send_email_smtp(to_email: str, subject: str, html_content: str, attachment: 
         if attachment:
             # Expects attachment = {"filename": "invoice.pdf", "content": bytes}
             part = MIMEApplication(attachment["content"], Name=attachment["filename"])
-            part['Content-Disposition'] = f'attachment; filename="{attachment["filename"]}"'
-            msg.attach(part)
-
         # Connect to Gmail SMTP with Robust IP Failover
         import socket
         import ssl
@@ -59,9 +56,9 @@ def send_email_smtp(to_email: str, subject: str, html_content: str, attachment: 
             try:
                 logger.info(f"Attempting connection to {ip}:{settings.smtp_port}...")
                 if settings.smtp_port == 465:
-                    server = smtplib.SMTP_SSL(ip, settings.smtp_port, context=context, timeout=10)
+                    server = smtplib.SMTP_SSL(ip, settings.smtp_port, context=context, timeout=30)
                 else:
-                    server = smtplib.SMTP(ip, settings.smtp_port, timeout=10)
+                    server = smtplib.SMTP(ip, settings.smtp_port, timeout=30)
                     server.starttls(context=context)
                 
                 # If we get here, connection successful
@@ -79,6 +76,12 @@ def send_email_smtp(to_email: str, subject: str, html_content: str, attachment: 
         server.login(settings.smtp_username, settings.smtp_password)
         server.send_message(msg)
         server.quit()
+
+        logger.info(f"✅ Email sent to {to_email}")
+
+    except Exception as e:
+        logger.error(f"❌ SMTP Email Failed: {e}")
+        print(f"SMTP ERROR: {e}")
         
         logger.info(f"✅ Email sent to {to_email}")
 
