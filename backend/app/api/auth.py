@@ -119,6 +119,7 @@ async def register_owner(
         db.refresh(user)
 
         # Send Welcome Email (Preserving original functionality)
+        # Send Welcome Email (Preserving original functionality)
         background_tasks.add_task(
             send_welcome_email, 
             to_email=user.email, 
@@ -261,10 +262,12 @@ async def reset_password_with_code(
 def delete_account(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
+    cred_db: Session = Depends(get_credentials_db),
 ):
     """
     Delete the current user's account.
     Only Owners can perform this action.
+    Removes data from BOTH Main DB and Credentials DB.
     """
     if current_user.role != UserRole.OWNER:
         raise HTTPException(
@@ -279,6 +282,7 @@ def delete_account(
         from app.models.account import Transaction
         
         owner_id = current_user.id
+        username = current_user.username # Store username before delete
         
         # 1. Identify all users in this business (Owner + Staff)
         team_ids = [uid[0] for uid in db.query(User.id).filter(
@@ -314,14 +318,35 @@ def delete_account(
         db.query(Stock).filter(Stock.owner_id == owner_id).delete(synchronize_session=False)
         
         # 5. Delete Staff Members (Main DB)
+        # Also need to delete Staff from Credentials DB? 
+        # Yes, find staff usernames first if we want strict cleanup, 
+        # OR just delete based on pattern/logic if possible.
+        # But UserCredentials doesn't always have owner_id populated in old records.
+        # However, improved 'create_staff' populates 'owner_id' in UserCredentials.
+        # Let's try to delete by username for consistency or owner_id if available.
+        
+        # 5a. Get staff usernames
+        staff_usernames = [u.username for u in db.query(User).filter(User.owner_id == owner_id).all()]
+        
         db.query(User).filter(User.owner_id == owner_id).delete(synchronize_session=False)
         
-        # 6. Delete the Owner User
+        # 6. Delete the Owner User (Main DB)
         db.delete(current_user)
+        
+        # 7. SYNC DELETE: Remove from Credentials DB
+        # Remove Owner
+        cred_db.query(UserCredentials).filter(UserCredentials.username == username).delete(synchronize_session=False)
+        
+        # Remove Staff (using usernames collected from Main DB)
+        if staff_usernames:
+            cred_db.query(UserCredentials).filter(UserCredentials.username.in_(staff_usernames)).delete(synchronize_session=False)
+
         db.commit()
+        cred_db.commit()
         
     except Exception as e:
         db.rollback()
+        cred_db.rollback()
         print(f"Delete Error: {e}") # Log to console
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

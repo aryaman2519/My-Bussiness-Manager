@@ -46,7 +46,7 @@ def send_welcome_email(to_email: str, username: str, password: str, security_cod
         """
 
         resend.Emails.send({
-            "from": settings.smtp_from_email, # e.g. "SmartStock <onboarding@resend.dev>"
+            "from": settings.from_email, # e.g. "SmartStock <onboarding@resend.dev>"
             "to": to_email,
             "subject": "Welcome to SmartStock 360 🚀",
             "html": html_content
@@ -54,6 +54,9 @@ def send_welcome_email(to_email: str, username: str, password: str, security_cod
         logger.info(f"📧 Welcome email sent to {to_email}")
 
     except Exception as e:
+        print(f"❌ EMAIL FAILED DEBUG: {str(e)}")
+        if hasattr(e, 'response'):
+             print(f"HTTP Response: {e.response}")
         logger.error(f"❌ Email failed: {e}")
 
 def send_password_change_email(to_email: str, username: str, new_password: str):
@@ -80,7 +83,7 @@ def send_password_change_email(to_email: str, username: str, new_password: str):
         """
 
         resend.Emails.send({
-            "from": settings.smtp_from_email,
+            "from": settings.from_email,
             "to": to_email,
             "subject": "Your password has been updated",
             "html": html_content
@@ -126,7 +129,7 @@ def send_low_stock_alert(product_name: str, company_name: str, current_quantity:
             return
 
         resend.Emails.send({
-            "from": settings.smtp_from_email,
+            "from": settings.from_email,
             "to": valid_recipients,
             "subject": f"ALERT: {product_name} is running low!",
             "html": html_content
@@ -176,7 +179,7 @@ def send_customer_invoice_email(
         pdf_content = list(pdf_bytes)
 
         params = {
-            "from": f"{business_name} <{settings.smtp_from_email}>",
+            "from": f"{business_name} <{settings.from_email}>",
             "to": to_email,
             "subject": f"Invoice #{invoice_number} from {business_name}",
             "html": html_content,
@@ -234,7 +237,7 @@ def send_invoice_copy_email(
         pdf_content = list(pdf_bytes)
 
         resend.Emails.send({
-            "from": f"{business_name} (Record) <{settings.smtp_from_email}>",
+            "from": f"{business_name} (Record) <{settings.from_email}>",
             "to": to_email,
             "subject": f"[Copy] Invoice #{invoice_number} - {customer_name}",
             "html": html_content,

@@ -76,10 +76,11 @@ def create_app() -> FastAPI:
             print("✅ Databases initialized successfully!")
             
             # Check Email Configuration
-            if not settings.smtp_username or not settings.smtp_password:
-                print("⚠️  Email configuration missing! SMTP_USERNAME or SMTP_PASSWORD not set. Emails will NOT be sent.")
+            # Check Email Configuration (Resend)
+            if not settings.resend_api_key:
+                print("⚠️  Email configuration missing! RESEND_API_KEY not set. Emails will NOT be sent.")
             else:
-                 print(f"📧 Email system configured. Sending as: {settings.smtp_from_email}")
+                 print(f"📧 Email system configured. Sending from: {settings.from_email}")
 
         except Exception as e:
             print(f"⚠️ Database initialization warning: {e}")

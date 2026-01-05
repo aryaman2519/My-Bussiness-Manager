@@ -21,11 +21,8 @@ class Settings(BaseSettings):
     twilio_whatsapp_number: str = ""
 
     # Email Settings
-    smtp_server: str = "smtp.gmail.com"
-    smtp_port: int = 587
-    smtp_username: str = ""
-    smtp_password: str = ""
-    smtp_from_email: str = "noreply@smartstock360.com"
+    # Email Settings
+    from_email: str = "onboarding@resend.dev"
 
     resend_api_key: str | None = None
     gemini_api_key: str | None = None
