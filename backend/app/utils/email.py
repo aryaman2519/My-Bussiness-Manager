@@ -31,8 +31,14 @@ def send_email_smtp(to_email: str, subject: str, html_content: str, attachment: 
             msg.attach(part)
 
         # Connect to Gmail SMTP
-        server = smtplib.SMTP(settings.smtp_server, settings.smtp_port)
-        server.starttls()
+        if settings.smtp_port == 465:
+            # Use SSL directly
+            server = smtplib.SMTP_SSL(settings.smtp_server, settings.smtp_port)
+        else:
+            # Use TLS (Port 587 usually)
+            server = smtplib.SMTP(settings.smtp_server, settings.smtp_port)
+            server.starttls()
+            
         server.login(settings.smtp_username, settings.smtp_password)
         server.send_message(msg)
         server.quit()
@@ -41,8 +47,7 @@ def send_email_smtp(to_email: str, subject: str, html_content: str, attachment: 
 
     except Exception as e:
         logger.error(f"❌ SMTP Email Failed: {e}")
-        # Re-raise for debugging if needed, or just log
-        print(f"SMTP ERROR: {e}")
+        # print(f"SMTP ERROR: {e}") # Debug only
 
 def send_welcome_email(to_email: str, username: str, password: str, security_code: str):
     """

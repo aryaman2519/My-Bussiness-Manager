@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     # Email Settings
     # Email Settings
     smtp_server: str = "smtp.gmail.com"
-    smtp_port: int = 587
+    smtp_port: int = 465
     smtp_username: str = ""
     smtp_password: str = ""
     from_email: str = "noreply@smartstock360.com"
