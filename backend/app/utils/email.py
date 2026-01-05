@@ -30,32 +30,52 @@ def send_email_smtp(to_email: str, subject: str, html_content: str, attachment: 
             part['Content-Disposition'] = f'attachment; filename="{attachment["filename"]}"'
             msg.attach(part)
 
-        # Connect to Gmail SMTP
-        # Force IPv4 Resolution to bypass Render IPv6 routing issues
+        # Connect to Gmail SMTP with Robust IP Failover
         import socket
         import ssl
         
+        server = None
+        last_error = None
+        
+        # 1. Resolve ALL IPv4 addresses
         try:
-            target_ip = socket.gethostbyname(settings.smtp_server)
-            logger.info(f"Resolved {settings.smtp_server} to IPv4: {target_ip}")
+            # AF_INET = IPv4, SOCK_STREAM = TCP
+            addr_info = socket.getaddrinfo(settings.smtp_server, settings.smtp_port, socket.AF_INET, socket.SOCK_STREAM)
+            # addr_info is list of (family, type, proto, canonname, sockaddr)
+            # sockaddr is (ip, port)
+            ips = list(set([info[4][0] for info in addr_info])) # Deduplicate IPs
+            logger.info(f"Resolved Gmail IPs: {ips}")
         except Exception as e:
             logger.error(f"DNS Resolution failed: {e}")
-            target_ip = settings.smtp_server
+            ips = [settings.smtp_server] # Fallback to hostname
 
-        # Prepare SSL Context (Ignore hostname check since we use raw IP)
+        # 2. Prepare SSL Context
         context = ssl.create_default_context()
         context.check_hostname = False
         context.verify_mode = ssl.CERT_NONE
 
-        if settings.smtp_port == 465:
-            # Use SSL directly (Port 465)
-            server = smtplib.SMTP_SSL(target_ip, settings.smtp_port, context=context)
-        else:
-            # Use TLS (Port 587 default)
-            server = smtplib.SMTP(target_ip, settings.smtp_port)
-            # server.set_debuglevel(1) # Enable if needed
-            server.starttls(context=context)
-            
+        # 3. Try connecting to each IP
+        for ip in ips:
+            try:
+                logger.info(f"Attempting connection to {ip}:{settings.smtp_port}...")
+                if settings.smtp_port == 465:
+                    server = smtplib.SMTP_SSL(ip, settings.smtp_port, context=context, timeout=10)
+                else:
+                    server = smtplib.SMTP(ip, settings.smtp_port, timeout=10)
+                    server.starttls(context=context)
+                
+                # If we get here, connection successful
+                logger.info(f"✅ Connected to {ip}")
+                last_error = None
+                break
+            except Exception as e:
+                logger.warning(f"Failed to connect to {ip}: {e}")
+                last_error = e
+                continue
+        
+        if server is None:
+             raise Exception(f"Could not connect to any Gmail IP. Last error: {last_error}")
+
         server.login(settings.smtp_username, settings.smtp_password)
         server.send_message(msg)
         server.quit()
