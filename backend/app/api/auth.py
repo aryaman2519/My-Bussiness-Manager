@@ -127,15 +127,14 @@ async def register_owner(
         db.commit()
         db.refresh(user)
 
-        # Send Welcome Email (Reverted from WhatsApp)
-        from app.utils.email import send_welcome_email
-        if user.email:
-            background_tasks.add_task(
-                send_welcome_email, 
-                to_email=user.email, 
-                username=user.username,
-                business_name=user.business_name
-            )
+        # Send Welcome WhatsApp
+        from app.utils.whatsapp import send_welcome_whatsapp
+        background_tasks.add_task(
+            send_welcome_whatsapp, 
+            to_number=user.phone_number, 
+            business_name=user.business_name, 
+            username=user.username
+        )
 
         return UserResponse(
             id=user.id,

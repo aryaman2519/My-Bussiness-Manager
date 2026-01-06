@@ -240,33 +240,33 @@ async def add_or_update_stock(
                              should_alert = True
                 
                 if should_alert:
-                    # Fetch recipients: Owner + ALL Staff members (Emails)
-                    recipients = []
+                    # Fetch recipients: Owner + ALL Staff members (Phone Numbers)
+                    phone_numbers = set()
                     
-                    # 1. Get Owner Email
+                    # 1. Get Owner Phone
                     if owner_id != -1:
                         owner = db.query(User).filter(User.id == owner_id).first()
-                        if owner and owner.email:
-                            recipients.append(owner.email)
+                        if owner and owner.phone_number:
+                            phone_numbers.add(owner.phone_number)
                     
                     # 2. Get All Staff for this Owner
                     if owner_id != -1:
                          staff_members = db.query(User).filter(User.owner_id == owner_id).all()
                          for staff in staff_members:
-                             if staff.email:
-                                 recipients.append(staff.email)
+                             if staff.phone_number:
+                                 phone_numbers.add(staff.phone_number)
                     
-                    # Call Email Function (once, passing the list)
-                    from app.utils.email import send_low_stock_alert
+                    # Call WhatsApp for each number
+                    from app.utils.whatsapp import send_low_stock_whatsapp
                     
-                    if recipients:
-                         background_tasks.add_task(
-                            send_low_stock_alert,
-                            product_name=existing_stock.product_name,
-                            company_name=existing_stock.company_name,
-                            current_quantity=existing_stock.quantity,
-                            recipients=recipients
-                        )
+                    if phone_numbers:
+                        for phone in phone_numbers:
+                            background_tasks.add_task(
+                                send_low_stock_whatsapp,
+                                to_number=phone,
+                                product_name=existing_stock.product_name,
+                                current_quantity=existing_stock.quantity
+                            )
                         
                         # Store as Naive IST
                         existing_stock.last_alert_sent = datetime.now(pytz.timezone('Asia/Kolkata')).replace(tzinfo=None)
